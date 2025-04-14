@@ -7,7 +7,7 @@ import models.Orders;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
+import static org.apache.http.HttpStatus.*;
 import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(Parameterized.class)
@@ -55,7 +55,7 @@ public class OrderColorParameterizedTest {
 
        response.then()
                 .assertThat()
-                .statusCode(201)
+                .statusCode(SC_CREATED)
                 .body("track", notNullValue())
                 .extract()
                 .path("track");

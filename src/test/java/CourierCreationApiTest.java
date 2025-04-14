@@ -2,7 +2,6 @@ import io.qameta.allure.Issue;
 import io.qameta.allure.junit4.DisplayName;
 import io.qameta.allure.Description;
 import models.Courier;
-import models.CourierAuthService;
 import models.CourierCredentials;
 import generators.CourierGenerator;
 import api.CourierApi;
@@ -10,25 +9,19 @@ import io.restassured.response.Response;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.After;
-
-
 import static org.apache.http.HttpStatus.*;
 import static org.junit.Assert.*;
 
-public class CourierApiTest {
+public class CourierCreationApiTest {
     private static final String INSUFFICIENT_DATA_FOR_CREATION = "Недостаточно данных для создания учетной записи";
     private static final String DUPLICATE_LOGIN_MESSAGE = "Этот логин уже используется";
-    private static final String INSUFFICIENT_DATA_FOR_LOGIN = "Недостаточно данных для входа";
-    private static final String ACCOUNT_NOT_FOUND_MSG = "Учетная запись не найдена";
 
     private CourierApi courierApi;
-    private CourierAuthService authService;
     private int createdCourierId;
 
     @Before
     public void setUp() {
         courierApi = new CourierApi();
-        authService = new CourierAuthService(courierApi);
     }
 
     // проверка ручки post/api/v1/courier
@@ -98,46 +91,6 @@ public class CourierApiTest {
         createAndVerifyCourierWithoutLoginOrPassword(courier);
     }
 
-    // проверка ручки post/api/v1/courier/login
-    @Test
-    @DisplayName("Авторизация зарегистрированного курьера")
-    @Description("Запрос c существующей парой логин-пароль")
-    public void entranceForRegisteredCourier() {
-        Courier courier = CourierGenerator.createWithAllFields(); // генератор тестового курьера
-        courierApi.createCourier(courier);
-        createdCourierId = authService.getCourierId(
-                CourierCredentials.credentialsFromCourier(courier)
-        );
-        assertTrue(createdCourierId > 0);
-    }
-
-    @Test
-    @DisplayName("Авторизация незарегистрированного курьера")
-    @Description("Запрос c несуществующей парой логин-пароль")
-    public void entranceForUnregisteredCourier() {
-        Response response = attemptLogin(
-                "nonexistent_login",
-                "wrong_password"
-        );
-        verifyFailedLogin(response, SC_NOT_FOUND, ACCOUNT_NOT_FOUND_MSG);
-    }
-
-    @Test
-    @DisplayName("Авторизация курьера без логина")
-    @Description("Попытка входа без логина вызывает ошибку")
-    public void loginWithoutLoginField() {
-        Response response = attemptLogin(null, "valid_password");
-        verifyFailedLogin(response, SC_BAD_REQUEST, INSUFFICIENT_DATA_FOR_LOGIN);
-    }
-
-    @Test
-    @DisplayName("Авторизация курьера без пароля")
-    @Description("Попытка входа без пароля вызывает ошибку")
-    public void loginWithoutPasswordField() {
-        Response response = attemptLogin("valid_login", "");
-        verifyFailedLogin(response, SC_BAD_REQUEST, INSUFFICIENT_DATA_FOR_LOGIN);
-    }
-
     // вспомогательный метод для создания курьера
     private void createAndVerifyCourier(Courier courier) {
     Response createResponse = courierApi.createCourier(courier); // создание курьера через API
@@ -148,9 +101,10 @@ public class CourierApiTest {
     assertTrue("Тело ответа должно содержать 'ok: true'",
                createResponse.jsonPath().getBoolean("ok"));
     // получение ID через авторизацию и сохранение
-    createdCourierId = authService.getCourierId(
-            CourierCredentials.credentialsFromCourier(courier)
-            );
+        Response loginResponse = courierApi.loginCourier(
+                CourierCredentials.credentialsFromCourier(courier)
+        );
+        createdCourierId = loginResponse.jsonPath().getInt("id");
     }
 
     // вспомогательный метод для создания курьера без логина или пароля
@@ -165,31 +119,10 @@ public class CourierApiTest {
                 createResponse.jsonPath().getString("message"));
     }
 
-    // вспомогательный метод для попытки входа
-    private Response attemptLogin(String login, String password) {
-        return courierApi.loginCourier(new CourierCredentials(login, password));
-    }
-
-    // вспомогательный метод для проверки неудачного входа
-    private void verifyFailedLogin(Response response, int expectedCode, String expectedMessage) {
-        assertEquals("Неверный код ответа",
-                expectedCode,
-                response.statusCode());
-        assertEquals("Неверное сообщение об ошибке",
-                expectedMessage,
-                response.jsonPath().getString("message"));
-    }
-
     @After
     public void tearDown() {
-        try {
-            if (createdCourierId != 0) {
-                courierApi.deleteCourier(createdCourierId);
-            }
-        } catch (Exception e) {
-            System.err.println("Ошибка при очистке: " + e.getMessage());
-        } finally {
-            createdCourierId = 0;
+        if (createdCourierId != 0) {
+            courierApi.deleteCourier(createdCourierId);
         }
     }
 }

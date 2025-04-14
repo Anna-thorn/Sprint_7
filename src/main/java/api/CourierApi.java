@@ -1,5 +1,7 @@
 package api;
 
+import io.qameta.allure.Step;
+import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.response.Response;
 import models.Courier;
 import models.CourierCredentials;
@@ -12,9 +14,10 @@ public class CourierApi { // методы API для курьера
     private static final String LOGIN_ENDPOINT = "/api/v1/courier/login"; //post
     private static final String DELETE_ENDPOINT = "/api/v1/courier/"; // :id delete
 
-    // создание курьера
+    @Step("Создание курьера")
     public Response createCourier(Courier courier) {
         return given()
+                .filter(new AllureRestAssured())
                 .baseUri(BASE_URL)
                 .contentType("application/json")
                 .body(courier)
@@ -22,9 +25,10 @@ public class CourierApi { // методы API для курьера
                 .post(CREATE_ENDPOINT);
     }
 
-    // логин курьера (возвращает ID для удаления)
+    @Step("Логин курьера в системе") // возвращает ID для удаления
     public Response loginCourier(CourierCredentials credentials) {
         return given()
+                .filter(new AllureRestAssured())
                 .baseUri(BASE_URL)
                 .contentType("application/json")
                 .body(credentials)
@@ -32,9 +36,10 @@ public class CourierApi { // методы API для курьера
                 .post(LOGIN_ENDPOINT);
     }
 
-    // удаление курьера
+    @Step("Удаление курьера")
     public Response deleteCourier(int courierId) {
         return given()
+                .filter(new AllureRestAssured())
                 .baseUri(BASE_URL)
                 .contentType("application/json")
                 .when()
